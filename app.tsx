@@ -167,7 +167,7 @@ function CommandManager() {
       {chatContainer !== null && portalHost === null && open ? null : (
       <DialogContent
         className={`max-h-[min(680px,calc(100dvh-2rem))] max-w-2xl overflow-hidden p-0 ${
-          isChatScoped ? "!absolute" : ""
+          isChatScoped ? "!absolute !top-[15%] !translate-y-0" : ""
         }`}
         overlayClassName={isChatScoped ? "!absolute" : undefined}
         portalContainer={isChatScoped ? portalHost : null}

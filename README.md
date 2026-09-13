@@ -3,7 +3,7 @@
 Hmm Commands keeps reusable instructions close to every BB agent conversation.
 The Commands button appears in the new-thread composer and in existing thread
 headers. Open it to save a command, copy its prompt, or insert it into the
-active composer draft. The manager is centered inside BB’s main chat container.
+active composer draft. The manager is centered 15% from the top of BB’s main chat container.
 
 Commands are stored in the plugin's namespaced SQLite database and stay
 available across BB clients. Insertion appends the prompt to the current draft,

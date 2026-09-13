@@ -4,8 +4,8 @@ instructions are available before and after a thread starts.
 
 The manager opens from the checklist action or with `Cmd+Shift+J` (`Ctrl+Shift+J`
 on Windows and Linux). The new-command form is collapsed until it is requested,
-and saved commands use compact inline actions. The manager is centered inside
-BB’s main chat container.
+and saved commands use compact inline actions. The manager is centered 15% from
+the top of BB’s main chat container.
 
 Save a command with a short name and a prompt body. The manager keeps each
 saved prompt in the plugin's own SQLite database, refreshes open BB clients
