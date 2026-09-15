@@ -28,9 +28,10 @@ bb plugin reload hmm-commands
 
 ## Use
 
-Open a new-thread composer or an existing thread and choose the checklist icon
+Open a new-thread composer or an existing thread and choose the command icon
 labelled **Open command manager**. You can also press **Cmd+Shift+J** (or
-**Ctrl+Shift+J**) anywhere the Commands action is available. Use **New command**
+**Ctrl+Shift+J**), or open the Command Palette with **Cmd+Shift+P** and choose
+**Hmm Commands: open command manager**. Use **New command**
 to reveal the form, then use the compact **Insert**, **Copy**, or **Delete**
 actions from the saved-command list. The dialog becomes a bottom drawer on
 narrow viewports and keeps the same actions available.

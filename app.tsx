@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Command } from "lucide-react";
 import {
   definePluginApp,
   useComposer,
@@ -22,6 +23,8 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { usePortalScopeProps } from "@/lib/portal-scope";
+
+const OPEN_COMMAND_MANAGER_EVENT = "hmm-commands:open-manager";
 
 function appendPrompt(current: string, prompt: string): string {
   const trimmed = current.trimEnd();
@@ -76,6 +79,7 @@ function CommandManager() {
   const isChatScoped = chatContainer !== null && portalHost !== null;
 
   useEffect(() => {
+    const openManager = () => setOpen(true);
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.isComposing ||
@@ -86,11 +90,15 @@ function CommandManager() {
         return;
       }
       event.preventDefault();
-      setOpen(true);
+      openManager();
     };
 
+    window.addEventListener(OPEN_COMMAND_MANAGER_EVENT, openManager);
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener(OPEN_COMMAND_MANAGER_EVENT, openManager);
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   useEffect(() => {
@@ -160,7 +168,7 @@ function CommandManager() {
           aria-label="Open command manager"
           aria-keyshortcuts="Meta+Shift+J Control+Shift+J"
         >
-          <Icon name="ListTodo" aria-hidden="true" />
+          <Command className="size-4" aria-hidden="true" />
         </Button>
       </DialogTrigger>
 
@@ -267,7 +275,7 @@ function CommandManager() {
               </div>
             ) : commands.length === 0 ? (
               <div className="grid place-items-center gap-2 py-8 text-center">
-                <Icon name="ListTodo" className="size-5 text-muted-foreground" aria-hidden="true" />
+                <Command className="size-5 text-muted-foreground" aria-hidden="true" />
                 <p className="text-sm font-medium">No saved commands</p>
                 <p className="max-w-sm text-xs leading-5 text-muted-foreground">
                   Add the first instruction you want to reuse across agent conversations.
@@ -377,5 +385,13 @@ export default definePluginApp((app) => {
     id: "commands",
     title: "Commands",
     component: CommandManager,
+  });
+
+  app.slots.commandPaletteAction({
+    id: "open-commands",
+    title: "Hmm Commands: open command manager",
+    run: () => {
+      window.dispatchEvent(new Event(OPEN_COMMAND_MANAGER_EVENT));
+    },
   });
 });

@@ -2,8 +2,9 @@ Hmm Commands is a small prompt library for BB agents. It places a Commands
 action in the new-thread composer and in existing thread headers, so reusable
 instructions are available before and after a thread starts.
 
-The manager opens from the checklist action or with `Cmd+Shift+J` (`Ctrl+Shift+J`
-on Windows and Linux). The new-command form is collapsed until it is requested,
+The manager opens from the Command action, with `Cmd+Shift+J` (`Ctrl+Shift+J`
+on Windows and Linux), or from the Command Palette (`Cmd+Shift+P`) by choosing
+`Hmm Commands: open command manager`. The new-command form is collapsed until it is requested,
 and saved commands use compact inline actions. The manager is centered 15% from
 the top of BB’s main chat container.
 
