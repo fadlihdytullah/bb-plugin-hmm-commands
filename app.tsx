@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { Fragment, useCallback, useEffect, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Command } from "lucide-react";
 import {
   definePluginApp,
@@ -68,6 +68,7 @@ function CommandManager() {
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [portalHost, setPortalHost] = useState<HTMLDivElement | null>(null);
+  const focusComposerOnClose = useRef(false);
   const setPortalHostRef = useCallback(
     (node: HTMLDivElement | null) => setPortalHost(node),
     [],
@@ -144,8 +145,8 @@ function CommandManager() {
 
   const insertCommand = (commandPrompt: string) => {
     composer.updateText((current) => appendPrompt(current, commandPrompt));
+    focusComposerOnClose.current = true;
     setOpen(false);
-    queueMicrotask(() => composer.focus());
     toast.success("Command inserted into prompt");
   };
 
@@ -191,6 +192,14 @@ function CommandManager() {
         }`}
         overlayClassName={isChatScoped ? "!absolute" : undefined}
         portalContainer={isChatScoped ? portalHost : null}
+        onCloseAutoFocus={(event) => {
+          if (focusComposerOnClose.current) event.preventDefault();
+        }}
+        onAfterCloseAutoFocus={() => {
+          if (!focusComposerOnClose.current) return;
+          focusComposerOnClose.current = false;
+          composer.focus();
+        }}
       >
         <DialogHeader className="border-b border-border/60 px-5 py-4 pr-12">
           <div className="flex items-start justify-between gap-4">
@@ -277,7 +286,14 @@ function CommandManager() {
                 placeholder="Search commands"
                 aria-label="Search commands"
                 className="pl-8"
+                autoFocus
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+                  event.preventDefault();
+                  const first = visibleCommands[0];
+                  if (normalizedQuery !== "" && first) insertCommand(first.prompt);
+                }}
               />
             </div>
 

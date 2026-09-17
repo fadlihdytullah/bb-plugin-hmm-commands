@@ -32,8 +32,9 @@ Open a new-thread composer or an existing thread and choose the command icon
 labelled **Open command manager**. You can also press **Cmd+Shift+J** (or
 **Ctrl+Shift+J**), or open the Command Palette with **Cmd+Shift+P** and choose
 **Hmm Commands: open command manager**. Use **New command**
-to reveal the form. Filter saved commands by name or prompt with the search
-field, then use the compact **Insert**, **Copy**, or **Delete** actions from the
+to reveal the form. The search field is focused when the manager opens; filter
+saved commands by name or prompt, then press **Enter** to insert the first
+match. Or use the compact **Insert**, **Copy**, or **Delete** actions from the
 scrollable command table. The dialog becomes a bottom drawer on
 narrow viewports and keeps the same actions available.
 
