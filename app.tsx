@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useState, type FormEvent } from "react";
 import { Command } from "lucide-react";
 import {
   definePluginApp,
@@ -64,6 +64,7 @@ function CommandManager() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [portalHost, setPortalHost] = useState<HTMLDivElement | null>(null);
@@ -106,10 +107,21 @@ function CommandManager() {
       setShowForm(false);
       setName("");
       setPrompt("");
+      setQuery("");
       setBusy(false);
       setDeleteTarget(null);
     }
   }, [open]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleCommands =
+    normalizedQuery === ""
+      ? commands
+      : commands.filter(
+          (command) =>
+            command.name.toLowerCase().includes(normalizedQuery) ||
+            command.prompt.toLowerCase().includes(normalizedQuery),
+        );
 
   const addCommand = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -208,7 +220,7 @@ function CommandManager() {
             <form
               id="new-command-form"
               onSubmit={addCommand}
-              className="grid gap-2.5 border-b border-border/60 py-4"
+              className="grid gap-2.5 border-b border-border/60 pb-4"
             >
               <div className="grid gap-1.5">
                 <label htmlFor="command-name" className="text-xs font-medium">
@@ -253,13 +265,31 @@ function CommandManager() {
           ) : null}
 
           <section aria-labelledby="saved-commands-heading" className="grid gap-2">
+            <div className="relative mb-2">
+              <Icon
+                name="Search"
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                value={query}
+                placeholder="Search commands"
+                aria-label="Search commands"
+                className="pl-8"
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+
             <div className="flex items-center justify-between gap-3">
               <h3 id="saved-commands-heading" className="text-xs font-semibold">
                 Saved commands
               </h3>
               {commands.length > 0 ? (
                 <span className="text-xs tabular-nums text-muted-foreground">
-                  {commands.length}
+                  {normalizedQuery === ""
+                    ? commands.length
+                    : `${visibleCommands.length} / ${commands.length}`}
                 </span>
               ) : null}
             </div>
@@ -281,76 +311,99 @@ function CommandManager() {
                   Add the first instruction you want to reuse across agent conversations.
                 </p>
               </div>
+            ) : visibleCommands.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No commands match “{query.trim()}”.
+              </p>
             ) : (
-              <ul className="grid gap-2" aria-label="Saved commands">
-                {commands.map((command) => (
-                  <li key={command.id} className="grid gap-1.5 rounded-md bg-muted/50 px-2.5 py-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{command.name}</p>
-                        <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs leading-4 text-muted-foreground">
-                          {command.prompt}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
-                          aria-label={`Insert ${command.name} into prompt`}
-                          onClick={() => insertCommand(command.prompt)}
-                        >
-                          <Icon name="CornerDownLeft" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
-                          aria-label={`Copy ${command.name}`}
-                          onClick={() => void copyCommand(command.prompt)}
-                        >
-                          <Icon name="Copy" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground hover:text-destructive`}
-                          aria-label={`Delete ${command.name}`}
-                          aria-expanded={deleteTarget === command.id}
-                          onClick={() => setDeleteTarget(command.id)}
-                        >
-                          <Icon name="Trash2" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </div>
-                    {deleteTarget === command.id ? (
-                      <div
-                        role="group"
-                        aria-label={`Confirm deletion of ${command.name}`}
-                        className="flex items-center justify-between gap-3 rounded-md bg-destructive/10 px-2 py-1.5"
-                      >
-                        <p className="text-xs font-medium text-destructive">Delete this command?</p>
-                        <div className="flex items-center gap-2">
-                          <Button type="button" variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>
-                            Cancel
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => void deleteCommand(command.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+              <div className="max-h-80 overflow-y-auto rounded-md border border-border/60">
+                <table className="w-full table-fixed text-xs" aria-label="Saved commands">
+                  <thead className="sticky top-0 z-10 bg-background text-left text-muted-foreground">
+                    <tr className="border-b border-border/60">
+                      <th scope="col" className="w-40 px-2.5 py-1.5 font-medium">Name</th>
+                      <th scope="col" className="px-2.5 py-1.5 font-medium">Prompt</th>
+                      <th scope="col" className="w-24 px-2.5 py-1.5 text-right font-medium">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleCommands.map((command) => (
+                      <Fragment key={command.id}>
+                        <tr className="border-b border-border/40 last:border-b-0 hover:bg-muted/50">
+                          <td className="truncate px-2.5 py-1 font-medium" title={command.name}>
+                            {command.name}
+                          </td>
+                          <td className="truncate px-2.5 py-1 text-muted-foreground" title={command.prompt}>
+                            {command.prompt}
+                          </td>
+                          <td className="px-1.5 py-0.5">
+                            <div className="flex items-center justify-end gap-0.5">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
+                                aria-label={`Insert ${command.name} into prompt`}
+                                onClick={() => insertCommand(command.prompt)}
+                              >
+                                <Icon name="CornerDownLeft" aria-hidden="true" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
+                                aria-label={`Copy ${command.name}`}
+                                onClick={() => void copyCommand(command.prompt)}
+                              >
+                                <Icon name="Copy" aria-hidden="true" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground hover:text-destructive`}
+                                aria-label={`Delete ${command.name}`}
+                                aria-expanded={deleteTarget === command.id}
+                                onClick={() => setDeleteTarget(command.id)}
+                              >
+                                <Icon name="Trash2" aria-hidden="true" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                        {deleteTarget === command.id ? (
+                          <tr className="border-b border-border/40 bg-destructive/10 last:border-b-0">
+                            <td colSpan={3} className="px-2.5 py-1">
+                              <div
+                                role="group"
+                                aria-label={`Confirm deletion of ${command.name}`}
+                                className="flex items-center justify-between gap-3"
+                              >
+                                <p className="font-medium text-destructive">Delete this command?</p>
+                                <div className="flex items-center gap-2">
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => void deleteCommand(command.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
         </div>

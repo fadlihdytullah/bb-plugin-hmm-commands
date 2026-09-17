@@ -5,7 +5,8 @@ instructions are available before and after a thread starts.
 The manager opens from the Command action, with `Cmd+Shift+J` (`Ctrl+Shift+J`
 on Windows and Linux), or from the Command Palette (`Cmd+Shift+P`) by choosing
 `Hmm Commands: open command manager`. The new-command form is collapsed until it is requested,
-and saved commands use compact inline actions. The manager is centered 15% from
+and saved commands appear in a compact, scrollable table with a search filter
+above it that matches names and prompt text. Each row has inline actions. The manager is centered 15% from
 the top of BB’s main chat container.
 
 Save a command with a short name and a prompt body. The manager keeps each
