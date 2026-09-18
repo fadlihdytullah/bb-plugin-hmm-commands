@@ -1,5 +1,5 @@
 Hmm Commands is a small prompt library for BB agents. It places a Commands
-action in the new-thread composer and in existing thread headers, so reusable
+action in the agent composer and in existing thread headers, so reusable
 instructions are available before and after a thread starts.
 
 The manager opens from the Command action, with `Cmd+Shift+J` (`Ctrl+Shift+J`
@@ -17,6 +17,7 @@ through a realtime signal, and provides three direct actions:
 - Insert it into the active agent composer, preserving any draft text.
 - Delete it after an inline confirmation.
 
-Insertion only edits the draft and returns focus to the prompt input. It never
+Insertion only edits the draft, closes the manager, and returns focus to the
+prompt input. It never
 submits the agent turn. The responsive dialog becomes a drawer on narrow or
 coarse-pointer screens, and list actions use larger touch targets there.

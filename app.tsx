@@ -81,9 +81,16 @@ function CommandManager() {
   const isChatScoped = chatContainer !== null && portalHost !== null;
 
   useEffect(() => {
-    const openManager = () => setOpen(true);
+    // Thread view mounts two instances (composer action + header action);
+    // first listener claims the event so only one dialog opens.
+    const openManager = (event: Event) => {
+      if (event.defaultPrevented) return;
+      event.preventDefault();
+      setOpen(true);
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       if (
+        event.defaultPrevented ||
         event.isComposing ||
         event.key.toLowerCase() !== "j" ||
         !event.shiftKey ||
@@ -91,8 +98,7 @@ function CommandManager() {
       ) {
         return;
       }
-      event.preventDefault();
-      openManager();
+      openManager(event);
     };
 
     window.addEventListener(OPEN_COMMAND_MANAGER_EVENT, openManager);
@@ -446,7 +452,7 @@ function CommandManager() {
 export default definePluginApp((app) => {
   app.composer.customize({
     id: "commands",
-    scopes: ["new-thread"],
+    scopes: ["new-thread", "thread"],
     actions: [{ id: "open-commands", component: CommandManager }],
   });
 
@@ -460,7 +466,7 @@ export default definePluginApp((app) => {
     id: "open-commands",
     title: "Hmm Commands: open command manager",
     run: () => {
-      window.dispatchEvent(new Event(OPEN_COMMAND_MANAGER_EVENT));
+      window.dispatchEvent(new Event(OPEN_COMMAND_MANAGER_EVENT, { cancelable: true }));
     },
   });
 });
