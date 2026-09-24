@@ -35,7 +35,9 @@ labelled **Open command manager**. You can also press **Cmd+Shift+J** (or
 to reveal the form. The search field is focused when the manager opens; filter
 saved commands by name or prompt, then press **Enter** to insert the first
 match. Or use the compact **Insert**, **Copy**, or **Delete** actions from the
-scrollable command table. The dialog becomes a bottom drawer on
+scrollable command table. Each insert (button or Enter) increments the
+command's use count; the **Statistics** tab lists the top 5 most and least
+used commands. The dialog becomes a bottom drawer on
 narrow viewports and keeps the same actions available.
 
 ## Verify

@@ -50,5 +50,12 @@ export function useCommands() {
     [refresh, rpc],
   );
 
-  return { commands, isLoading, error, refresh, create, remove };
+  const recordUse = useCallback(
+    async (commandId: string) => {
+      await rpc.call("commands_record_use", { commandId });
+    },
+    [rpc],
+  );
+
+  return { commands, isLoading, error, refresh, create, remove, recordUse };
 }

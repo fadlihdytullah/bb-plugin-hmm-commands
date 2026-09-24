@@ -17,6 +17,10 @@ through a realtime signal, and provides three direct actions:
 - Insert it into the active agent composer, preserving any draft text.
 - Delete it after an inline confirmation.
 
+Every insert increments the command's use count. The **Statistics** tab shows
+the top 5 most used commands and the top 5 least used ones, each with its
+count; copying does not count as a use.
+
 Insertion only edits the draft, closes the manager, and returns focus to the
 prompt input. It never
 submits the agent turn. The responsive dialog becomes a drawer on narrow or

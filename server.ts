@@ -8,6 +8,7 @@ const commandSchema = z
     name: z.string(),
     prompt: z.string(),
     position: z.number().int().nonnegative(),
+    useCount: z.number().int().nonnegative(),
   })
   .strict();
 
@@ -31,6 +32,10 @@ export const rpcContract = defineRpcContract({
     input: z.object({ commandId: z.string().trim().min(1).max(200) }).strict(),
     output: z.object({ deleted: z.boolean() }).strict(),
   },
+  commands_record_use: {
+    input: z.object({ commandId: z.string().trim().min(1).max(200) }).strict(),
+    output: z.object({ recorded: z.boolean() }).strict(),
+  },
 });
 
 const COMMANDS_CHANGED = "commands-changed";
@@ -40,6 +45,7 @@ interface CommandRow {
   name: string;
   prompt: string;
   position: number;
+  useCount: number;
 }
 
 function normalizeName(name: string): string {
@@ -73,11 +79,12 @@ export default async function plugin(bb: BbPluginApi) {
      )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS commands_name_unique
        ON commands (lower(name))`,
+    `ALTER TABLE commands ADD COLUMN use_count INTEGER NOT NULL DEFAULT 0`,
   ]);
 
   const listCommands = (): Command[] =>
     db
-      .prepare("SELECT id, name, prompt, position FROM commands ORDER BY position ASC, id ASC")
+      .prepare("SELECT id, name, prompt, position, use_count AS useCount FROM commands ORDER BY position ASC, id ASC")
       .all() as CommandRow[];
 
   const createCommand = (rawName: string, rawPrompt: string): Command => {
@@ -96,6 +103,7 @@ export default async function plugin(bb: BbPluginApi) {
       name,
       prompt,
       position: (maxPosition.position ?? -1) + 1,
+      useCount: 0,
     };
     db.prepare("INSERT INTO commands (id, name, prompt, position) VALUES (?, ?, ?, ?)").run(
       command.id,
@@ -119,10 +127,20 @@ export default async function plugin(bb: BbPluginApi) {
     return true;
   };
 
+  const recordUse = (commandId: string): boolean => {
+    const result = db
+      .prepare("UPDATE commands SET use_count = use_count + 1 WHERE id = ?")
+      .run(commandId);
+    if (result.changes === 0) return false;
+    bb.realtime.publish(COMMANDS_CHANGED, { at: Date.now() });
+    return true;
+  };
+
   bb.rpc.register(rpcContract, {
     commands_list: () => ({ commands: listCommands() }),
     commands_create: ({ name, prompt }) => createCommand(name, prompt),
     commands_delete: ({ commandId }) => ({ deleted: deleteCommand(commandId) }),
+    commands_record_use: ({ commandId }) => ({ recorded: recordUse(commandId) }),
   });
 
   bb.onDispose(() => {

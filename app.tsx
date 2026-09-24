@@ -7,6 +7,7 @@ import {
 } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
 import { useCommands } from "@/hooks/use-commands";
+import type { Command as SavedCommand } from "./server";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +26,40 @@ import { Input } from "@/components/ui/input";
 import { usePortalScopeProps } from "@/lib/portal-scope";
 
 const OPEN_COMMAND_MANAGER_EVENT = "hmm-commands:open-manager";
+const STATS_LIMIT = 5;
+
+function UsageList({
+  title,
+  commands,
+  empty,
+}: {
+  title: string;
+  commands: readonly SavedCommand[];
+  empty: string;
+}) {
+  return (
+    <section className="grid gap-2">
+      <h3 className="text-xs font-semibold">{title}</h3>
+      {commands.length === 0 ? (
+        <p className="py-3 text-xs text-muted-foreground">{empty}</p>
+      ) : (
+        <ol className="rounded-md border border-border/60 text-xs">
+          {commands.map((command) => (
+            <li
+              key={command.id}
+              className="flex items-center justify-between gap-3 border-b border-border/40 px-2.5 py-1.5 last:border-b-0"
+            >
+              <span className="truncate font-medium" title={command.name}>{command.name}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {command.useCount} {command.useCount === 1 ? "use" : "uses"}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
 
 function appendPrompt(current: string, prompt: string): string {
   const trimmed = current.trimEnd();
@@ -59,8 +94,9 @@ async function writeClipboard(text: string): Promise<boolean> {
 
 function CommandManager() {
   const composer = useComposer();
-  const { commands, isLoading, error, refresh, create, remove } = useCommands();
+  const { commands, isLoading, error, refresh, create, remove, recordUse } = useCommands();
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"commands" | "stats">("commands");
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -111,6 +147,7 @@ function CommandManager() {
 
   useEffect(() => {
     if (!open) {
+      setView("commands");
       setShowForm(false);
       setName("");
       setPrompt("");
@@ -129,6 +166,15 @@ function CommandManager() {
             command.name.toLowerCase().includes(normalizedQuery) ||
             command.prompt.toLowerCase().includes(normalizedQuery),
         );
+
+  const mostUsed = commands
+    .filter((command) => command.useCount > 0)
+    .sort((a, b) => b.useCount - a.useCount || a.position - b.position)
+    .slice(0, STATS_LIMIT);
+  const leastUsed = commands
+    .filter((command) => !mostUsed.includes(command))
+    .sort((a, b) => a.useCount - b.useCount || a.position - b.position)
+    .slice(0, STATS_LIMIT);
 
   const addCommand = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -149,8 +195,9 @@ function CommandManager() {
     }
   };
 
-  const insertCommand = (commandPrompt: string) => {
-    composer.updateText((current) => appendPrompt(current, commandPrompt));
+  const insertCommand = (command: SavedCommand) => {
+    composer.updateText((current) => appendPrompt(current, command.prompt));
+    void recordUse(command.id).catch(() => undefined);
     focusComposerOnClose.current = true;
     setOpen(false);
     toast.success("Command inserted into prompt");
@@ -228,8 +275,37 @@ function CommandManager() {
               {showForm ? "Close" : "New command"}
             </Button>
           </div>
+          <div role="tablist" aria-label="Command views" className="mt-3 flex gap-1">
+            {(["commands", "stats"] as const).map((tab) => (
+              <Button
+                key={tab}
+                type="button"
+                role="tab"
+                size="sm"
+                variant={view === tab ? "secondary" : "ghost"}
+                aria-selected={view === tab}
+                onClick={() => setView(tab)}
+              >
+                {tab === "commands" ? "Commands" : "Statistics"}
+              </Button>
+            ))}
+          </div>
         </DialogHeader>
 
+        {view === "stats" ? (
+          <div className="grid min-h-0 gap-4 overflow-y-auto px-5 pb-4 sm:grid-cols-2">
+            <UsageList
+              title={`Top ${STATS_LIMIT} most used`}
+              commands={mostUsed}
+              empty="No command inserted yet."
+            />
+            <UsageList
+              title={`Top ${STATS_LIMIT} least used`}
+              commands={leastUsed}
+              empty="No other commands."
+            />
+          </div>
+        ) : (
         <div className="grid min-h-0 gap-4 overflow-y-auto px-5 pb-4">
           {showForm ? (
             <form
@@ -298,7 +374,7 @@ function CommandManager() {
                   if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
                   event.preventDefault();
                   const first = visibleCommands[0];
-                  if (normalizedQuery !== "" && first) insertCommand(first.prompt);
+                  if (normalizedQuery !== "" && first) insertCommand(first);
                 }}
               />
             </div>
@@ -367,7 +443,7 @@ function CommandManager() {
                                 size="icon"
                                 className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
                                 aria-label={`Insert ${command.name} into prompt`}
-                                onClick={() => insertCommand(command.prompt)}
+                                onClick={() => insertCommand(command)}
                               >
                                 <Icon name="CornerDownLeft" aria-hidden="true" />
                               </Button>
@@ -429,6 +505,7 @@ function CommandManager() {
             )}
           </section>
         </div>
+        )}
       </DialogContent>
       )}
     </Dialog>
