@@ -42,6 +42,15 @@ export function useCommands() {
     [refresh, rpc],
   );
 
+  const update = useCallback(
+    async (commandId: string, name: string, prompt: string) => {
+      const command = await rpc.call("commands_update", { commandId, name, prompt });
+      await refresh();
+      return command;
+    },
+    [refresh, rpc],
+  );
+
   const remove = useCallback(
     async (commandId: string) => {
       await rpc.call("commands_delete", { commandId });
@@ -57,5 +66,5 @@ export function useCommands() {
     [rpc],
   );
 
-  return { commands, isLoading, error, refresh, create, remove, recordUse };
+  return { commands, isLoading, error, refresh, create, update, remove, recordUse };
 }

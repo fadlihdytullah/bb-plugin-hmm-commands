@@ -94,12 +94,13 @@ async function writeClipboard(text: string): Promise<boolean> {
 
 function CommandManager() {
   const composer = useComposer();
-  const { commands, isLoading, error, refresh, create, remove, recordUse } = useCommands();
+  const { commands, isLoading, error, refresh, create, update, remove, recordUse } = useCommands();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"commands" | "stats">("commands");
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -151,6 +152,7 @@ function CommandManager() {
       setShowForm(false);
       setName("");
       setPrompt("");
+      setEditingId(null);
       setQuery("");
       setBusy(false);
       setDeleteTarget(null);
@@ -176,16 +178,30 @@ function CommandManager() {
     .sort((a, b) => a.useCount - b.useCount || a.position - b.position)
     .slice(0, STATS_LIMIT);
 
-  const addCommand = async (event: FormEvent<HTMLFormElement>) => {
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setName("");
+    setPrompt("");
+  };
+
+  const startEdit = (command: SavedCommand) => {
+    setEditingId(command.id);
+    setName(command.name);
+    setPrompt(command.prompt);
+    setDeleteTarget(null);
+    setShowForm(true);
+  };
+
+  const saveCommand = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (busy || name.trim() === "" || prompt.trim() === "") return;
     setBusy(true);
     try {
-      await create(name, prompt);
-      setName("");
-      setPrompt("");
-      setShowForm(false);
-      toast.success("Command saved");
+      if (editingId === null) await create(name, prompt);
+      else await update(editingId, name, prompt);
+      closeForm();
+      toast.success(editingId === null ? "Command saved" : "Command updated");
     } catch (cause) {
       toast.error("Could not save command", {
         description: cause instanceof Error ? cause.message : String(cause),
@@ -269,7 +285,7 @@ function CommandManager() {
               size="sm"
               aria-expanded={showForm}
               aria-controls="new-command-form"
-              onClick={() => setShowForm((current) => !current)}
+              onClick={() => (showForm ? closeForm() : setShowForm(true))}
             >
               <Icon name={showForm ? "X" : "Plus"} aria-hidden="true" />
               {showForm ? "Close" : "New command"}
@@ -310,7 +326,7 @@ function CommandManager() {
           {showForm ? (
             <form
               id="new-command-form"
-              onSubmit={addCommand}
+              onSubmit={saveCommand}
               className="grid gap-2.5 border-b border-border/60 pb-4"
             >
               <div className="grid gap-1.5">
@@ -348,8 +364,8 @@ function CommandManager() {
                   size="sm"
                   disabled={busy || name.trim() === "" || prompt.trim() === ""}
                 >
-                  <Icon name="Plus" aria-hidden="true" />
-                  {busy ? "Saving…" : "Add command"}
+                  <Icon name={editingId === null ? "Plus" : "Check"} aria-hidden="true" />
+                  {busy ? "Saving…" : editingId === null ? "Add command" : "Save changes"}
                 </Button>
               </div>
             </form>
@@ -420,7 +436,7 @@ function CommandManager() {
                     <tr className="border-b border-border/60">
                       <th scope="col" className="w-40 px-2.5 py-1.5 font-medium">Name</th>
                       <th scope="col" className="px-2.5 py-1.5 font-medium">Prompt</th>
-                      <th scope="col" className="w-24 px-2.5 py-1.5 text-right font-medium">
+                      <th scope="col" className="w-32 px-2.5 py-1.5 text-right font-medium">
                         <span className="sr-only">Actions</span>
                       </th>
                     </tr>
@@ -428,7 +444,7 @@ function CommandManager() {
                   <tbody>
                     {visibleCommands.map((command) => (
                       <Fragment key={command.id}>
-                        <tr className="border-b border-border/40 last:border-b-0 hover:bg-muted/50">
+                        <tr className="group border-b border-border/40 last:border-b-0 hover:bg-muted/50">
                           <td className="truncate px-2.5 py-1 font-medium" title={command.name}>
                             {command.name}
                           </td>
@@ -436,7 +452,13 @@ function CommandManager() {
                             {command.prompt}
                           </td>
                           <td className="px-1.5 py-0.5">
-                            <div className="flex items-center justify-end gap-0.5">
+                            <div
+                              className={`flex items-center justify-end gap-0.5 ${
+                                deleteTarget === command.id
+                                  ? ""
+                                  : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
+                              }`}
+                            >
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -456,6 +478,16 @@ function CommandManager() {
                                 onClick={() => void copyCommand(command.prompt)}
                               >
                                 <Icon name="Copy" aria-hidden="true" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
+                                aria-label={`Edit ${command.name}`}
+                                onClick={() => startEdit(command)}
+                              >
+                                <Icon name="Edit" aria-hidden="true" />
                               </Button>
                               <Button
                                 type="button"

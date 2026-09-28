@@ -28,6 +28,16 @@ export const rpcContract = defineRpcContract({
       .strict(),
     output: commandSchema,
   },
+  commands_update: {
+    input: z
+      .object({
+        commandId: z.string().trim().min(1).max(200),
+        name: z.string().trim().min(1).max(80),
+        prompt: z.string().trim().min(1).max(20_000),
+      })
+      .strict(),
+    output: commandSchema,
+  },
   commands_delete: {
     input: z.object({ commandId: z.string().trim().min(1).max(200) }).strict(),
     output: z.object({ deleted: z.boolean() }).strict(),
@@ -115,6 +125,24 @@ export default async function plugin(bb: BbPluginApi) {
     return command;
   };
 
+  const updateCommand = (commandId: string, rawName: string, rawPrompt: string): Command => {
+    const name = validateName(rawName);
+    const prompt = validatePrompt(rawPrompt);
+    const duplicate = db
+      .prepare("SELECT 1 FROM commands WHERE lower(name) = lower(?) AND id != ?")
+      .get(name, commandId);
+    if (duplicate !== undefined) throw new Error("A command with that name already exists");
+
+    const result = db
+      .prepare("UPDATE commands SET name = ?, prompt = ? WHERE id = ?")
+      .run(name, prompt, commandId);
+    if (result.changes === 0) throw new Error("Command not found");
+    bb.realtime.publish(COMMANDS_CHANGED, { at: Date.now() });
+    return db
+      .prepare("SELECT id, name, prompt, position, use_count AS useCount FROM commands WHERE id = ?")
+      .get(commandId) as CommandRow;
+  };
+
   const deleteCommand = (commandId: string): boolean => {
     const result = db.prepare("DELETE FROM commands WHERE id = ?").run(commandId);
     if (result.changes === 0) return false;
@@ -139,6 +167,7 @@ export default async function plugin(bb: BbPluginApi) {
   bb.rpc.register(rpcContract, {
     commands_list: () => ({ commands: listCommands() }),
     commands_create: ({ name, prompt }) => createCommand(name, prompt),
+    commands_update: ({ commandId, name, prompt }) => updateCommand(commandId, name, prompt),
     commands_delete: ({ commandId }) => ({ deleted: deleteCommand(commandId) }),
     commands_record_use: ({ commandId }) => ({ recorded: recordUse(commandId) }),
   });
