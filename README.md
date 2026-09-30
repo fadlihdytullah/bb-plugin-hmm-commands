@@ -37,8 +37,8 @@ saved commands by name or prompt, then press **Enter** to insert the first
 match. Or hover a row to reveal the compact **Insert**, **Copy**, **Edit**, or
 **Delete** actions in the scrollable command table. Each insert (button or Enter) increments the
 command's use count; the **Statistics** tab lists the top 5 most and least
-used commands. The dialog becomes a bottom drawer on
-narrow viewports and keeps the same actions available.
+used commands. The dialog stays centered on narrow windows instead of becoming
+a bottom drawer.
 
 ## Verify
 

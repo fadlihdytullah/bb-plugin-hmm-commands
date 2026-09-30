@@ -24,5 +24,5 @@ count; copying does not count as a use.
 
 Insertion only edits the draft, closes the manager, and returns focus to the
 prompt input. It never
-submits the agent turn. The responsive dialog becomes a drawer on narrow or
-coarse-pointer screens, and list actions use larger touch targets there.
+submits the agent turn. The dialog stays centered on narrow windows instead of becoming a
+drawer, and list actions use larger touch targets on coarse-pointer screens.

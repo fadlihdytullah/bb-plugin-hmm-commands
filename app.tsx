@@ -21,6 +21,7 @@ import {
   COARSE_POINTER_HEADER_ICON_BUTTON_CLASS,
   COARSE_POINTER_ROW_ACTION_SIZE_CLASS,
 } from "@/components/ui/coarse-pointer-sizing";
+import { CompactViewportOverrideProvider } from "@/components/ui/hooks/use-compact-viewport";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { usePortalScopeProps } from "@/lib/portal-scope";
@@ -239,7 +240,9 @@ function CommandManager() {
     }
   };
 
+  // Bottom sheets sit off-screen in a narrow window; always centre like cmd+k.
   const dialog = (
+    <CompactViewportOverrideProvider isCompactViewport={false}>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
@@ -541,6 +544,7 @@ function CommandManager() {
       </DialogContent>
       )}
     </Dialog>
+    </CompactViewportOverrideProvider>
   );
 
   if (chatContainer === null || !open) return dialog;
