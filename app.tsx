@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Command } from "lucide-react";
 import {
   definePluginApp,
@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -26,8 +26,10 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { usePortalScopeProps } from "@/lib/portal-scope";
 
-const OPEN_COMMAND_MANAGER_EVENT = "hmm-commands:open-manager";
+const TOGGLE_COMMAND_MANAGER_EVENT = "hmm-commands:toggle-manager";
 const STATS_LIMIT = 5;
+
+let closeOpenManager: (() => void) | null = null;
 
 function UsageList({
   title,
@@ -119,33 +121,26 @@ function CommandManager() {
   const isChatScoped = chatContainer !== null && portalHost !== null;
 
   useEffect(() => {
-    // Thread view mounts two instances (composer action + header action);
-    // first listener claims the event so only one dialog opens.
-    const openManager = (event: Event) => {
+    const toggleManager = (event: Event) => {
       if (event.defaultPrevented) return;
       event.preventDefault();
-      setOpen(true);
+      if (closeOpenManager) closeOpenManager();
+      else setOpen(true);
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.isComposing ||
-        event.key.toLowerCase() !== "j" ||
-        !event.shiftKey ||
-        (!event.metaKey && !event.ctrlKey)
-      ) {
-        return;
-      }
-      openManager(event);
-    };
-
-    window.addEventListener(OPEN_COMMAND_MANAGER_EVENT, openManager);
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener(TOGGLE_COMMAND_MANAGER_EVENT, toggleManager);
     return () => {
-      window.removeEventListener(OPEN_COMMAND_MANAGER_EVENT, openManager);
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener(TOGGLE_COMMAND_MANAGER_EVENT, toggleManager);
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    closeOpenManager = close;
+    return () => {
+      if (closeOpenManager === close) closeOpenManager = null;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -202,7 +197,7 @@ function CommandManager() {
       if (editingId === null) await create(name, prompt);
       else await update(editingId, name, prompt);
       closeForm();
-      toast.success(editingId === null ? "Command saved" : "Command updated");
+      toast.success(editingId === null ? "Saved" : "Updated");
     } catch (cause) {
       toast.error("Could not save command", {
         description: cause instanceof Error ? cause.message : String(cause),
@@ -217,12 +212,12 @@ function CommandManager() {
     void recordUse(command.id).catch(() => undefined);
     focusComposerOnClose.current = true;
     setOpen(false);
-    toast.success("Command inserted into prompt");
+    toast.success("Inserted");
   };
 
   const copyCommand = async (commandPrompt: string) => {
     if (await writeClipboard(commandPrompt)) {
-      toast.success("Command copied");
+      toast.success("Copied");
       return;
     }
     toast.error("Could not copy command");
@@ -232,7 +227,7 @@ function CommandManager() {
     try {
       await remove(commandId);
       setDeleteTarget(null);
-      toast.success("Command deleted");
+      toast.success("Deleted");
     } catch (cause) {
       toast.error("Could not delete command", {
         description: cause instanceof Error ? cause.message : String(cause),
@@ -240,7 +235,8 @@ function CommandManager() {
     }
   };
 
-  // Bottom sheets sit off-screen in a narrow window; always centre like cmd+k.
+  const iconButton = "size-6 text-muted-foreground";
+
   const dialog = (
     <CompactViewportOverrideProvider isCompactViewport={false}>
     <Dialog open={open} onOpenChange={setOpen}>
@@ -259,7 +255,8 @@ function CommandManager() {
 
       {chatContainer !== null && portalHost === null && open ? null : (
       <DialogContent
-        className={`max-h-[min(680px,calc(100dvh-2rem))] max-w-2xl overflow-hidden p-0 ${
+        hideCloseButton
+        className={`flex max-h-[min(560px,calc(100dvh-2rem))] max-w-xl flex-col gap-0 overflow-hidden rounded-xl p-0 ${
           isChatScoped ? "!absolute !top-[15%] !translate-y-0" : ""
         }`}
         overlayClassName={isChatScoped ? "!absolute" : undefined}
@@ -273,273 +270,227 @@ function CommandManager() {
           composer.focus();
         }}
       >
-        <DialogHeader className="border-b border-border/60 px-5 py-4 pr-12">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <DialogTitle>Commands</DialogTitle>
-              <DialogDescription>
-                Save reusable instructions, then copy or insert one into this agent’s prompt.
-                Shortcut: ⌘⇧J.
-              </DialogDescription>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-expanded={showForm}
-              aria-controls="new-command-form"
-              onClick={() => (showForm ? closeForm() : setShowForm(true))}
-            >
-              <Icon name={showForm ? "X" : "Plus"} aria-hidden="true" />
-              {showForm ? "Close" : "New command"}
-            </Button>
-          </div>
-          <div role="tablist" aria-label="Command views" className="mt-3 flex gap-1">
+        <DialogDescription className="sr-only">
+          Saved prompts you can insert into this agent.
+        </DialogDescription>
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border/60 pl-4 pr-1.5">
+          <DialogTitle className="text-xs font-semibold tracking-tight">Commands</DialogTitle>
+          {commands.length > 0 ? (
+            <span className="text-[10px] tabular-nums text-muted-foreground/60">{commands.length}</span>
+          ) : null}
+          <div role="tablist" aria-label="Command views" className="ml-auto flex gap-0.5">
             {(["commands", "stats"] as const).map((tab) => (
-              <Button
+              <button
                 key={tab}
                 type="button"
                 role="tab"
-                size="sm"
-                variant={view === tab ? "secondary" : "ghost"}
                 aria-selected={view === tab}
                 onClick={() => setView(tab)}
+                className={`h-6 rounded-md px-2 text-[11px] font-medium transition-colors ${
+                  view === tab
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {tab === "commands" ? "Commands" : "Statistics"}
-              </Button>
+                {tab === "commands" ? "List" : "Stats"}
+              </button>
             ))}
           </div>
-        </DialogHeader>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost" size="icon" className={iconButton} aria-label="Close">
+              <Icon name="X" aria-hidden="true" className="size-3.5" />
+            </Button>
+          </DialogClose>
+        </div>
 
         {view === "stats" ? (
-          <div className="grid min-h-0 gap-4 overflow-y-auto px-5 pb-4 sm:grid-cols-2">
-            <UsageList
-              title={`Top ${STATS_LIMIT} most used`}
-              commands={mostUsed}
-              empty="No command inserted yet."
-            />
-            <UsageList
-              title={`Top ${STATS_LIMIT} least used`}
-              commands={leastUsed}
-              empty="No other commands."
-            />
+          <div className="grid min-h-0 gap-4 overflow-y-auto p-4 sm:grid-cols-2">
+            <UsageList title="Most used" commands={mostUsed} empty="Nothing inserted yet." />
+            <UsageList title="Least used" commands={leastUsed} empty="No other commands." />
           </div>
         ) : (
-        <div className="grid min-h-0 gap-4 overflow-y-auto px-5 pb-4">
+        <>
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border/60 px-4">
+          <Icon name="Search" aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground/60" />
+          <input
+            type="search"
+            value={query}
+            placeholder="Search commands…"
+            aria-label="Search commands"
+            autoFocus
+            className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50 [&::-webkit-search-cancel-button]:hidden"
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              const first = visibleCommands[0];
+              if (normalizedQuery !== "" && first) insertCommand(first);
+            }}
+          />
+          {query === "" ? null : (
+            <button
+              type="button"
+              aria-label="Clear search"
+              className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setQuery("")}
+            >
+              <Icon name="X" aria-hidden="true" className="size-3" />
+            </button>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="-mr-1 h-6 shrink-0 rounded-md px-2 text-[11px]"
+            aria-expanded={showForm}
+            aria-controls="new-command-form"
+            onClick={() => (showForm ? closeForm() : setShowForm(true))}
+          >
+            <Icon name={showForm ? "X" : "Plus"} aria-hidden="true" className="size-3" />
+            {showForm ? "Close" : "New"}
+          </Button>
+        </div>
+
+        <div className="min-h-0 overflow-y-auto">
           {showForm ? (
             <form
               id="new-command-form"
               onSubmit={saveCommand}
-              className="grid gap-2.5 border-b border-border/60 pb-4"
+              className="grid gap-2 border-b border-border/60 bg-muted/30 p-3"
             >
-              <div className="grid gap-1.5">
-                <label htmlFor="command-name" className="text-xs font-medium">
-                  Name
-                </label>
-                <Input
-                  id="command-name"
-                  value={name}
-                  maxLength={80}
-                  autoFocus
-                  placeholder="Review this change"
-                  disabled={busy}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <label htmlFor="command-prompt" className="text-xs font-medium">
-                  Prompt
-                </label>
-                <textarea
-                  id="command-prompt"
-                  value={prompt}
-                  maxLength={20_000}
-                  rows={4}
-                  placeholder="Review the current diff and report correctness issues first."
-                  disabled={busy}
-                  onChange={(event) => setPrompt(event.target.value)}
-                  className="min-h-24 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                />
-              </div>
-              <div className="flex justify-end">
+              <Input
+                id="command-name"
+                aria-label="Name"
+                value={name}
+                maxLength={80}
+                autoFocus
+                placeholder="Name"
+                disabled={busy}
+                className="h-8 text-xs"
+                onChange={(event) => setName(event.target.value)}
+              />
+              <textarea
+                id="command-prompt"
+                aria-label="Prompt"
+                value={prompt}
+                maxLength={20_000}
+                rows={3}
+                placeholder="Prompt"
+                disabled={busy}
+                onChange={(event) => setPrompt(event.target.value)}
+                className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-xs leading-5 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <div className="flex justify-end gap-1.5">
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={closeForm}>
+                  Cancel
+                </Button>
                 <Button
                   type="submit"
                   size="sm"
+                  className="h-7 text-xs"
                   disabled={busy || name.trim() === "" || prompt.trim() === ""}
                 >
-                  <Icon name={editingId === null ? "Plus" : "Check"} aria-hidden="true" />
-                  {busy ? "Saving…" : editingId === null ? "Add command" : "Save changes"}
+                  {busy ? "Saving…" : editingId === null ? "Add" : "Save"}
                 </Button>
               </div>
             </form>
           ) : null}
 
-          <section aria-labelledby="saved-commands-heading" className="grid gap-2">
-            <div className="relative mb-2">
-              <Icon
-                name="Search"
-                aria-hidden="true"
-                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                type="search"
-                value={query}
-                placeholder="Search commands"
-                aria-label="Search commands"
-                className="pl-8"
-                autoFocus
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-                  event.preventDefault();
-                  const first = visibleCommands[0];
-                  if (normalizedQuery !== "" && first) insertCommand(first);
-                }}
-              />
+          {isLoading ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">Loading…</p>
+          ) : error !== null ? (
+            <div className="m-3 flex items-center justify-between gap-3 rounded-md bg-destructive/10 px-3 py-2">
+              <p role="alert" className="text-xs text-destructive">{error}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refresh()}>
+                Retry
+              </Button>
             </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <h3 id="saved-commands-heading" className="text-xs font-semibold">
-                Saved commands
-              </h3>
-              {commands.length > 0 ? (
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {normalizedQuery === ""
-                    ? commands.length
-                    : `${visibleCommands.length} / ${commands.length}`}
-                </span>
-              ) : null}
+          ) : commands.length === 0 ? (
+            <div className="grid place-items-center gap-1.5 py-10 text-center">
+              <Command className="size-5 text-muted-foreground/60" aria-hidden="true" />
+              <p className="text-xs font-medium">No commands yet</p>
+              <p className="text-xs text-muted-foreground">Press New to save your first prompt.</p>
             </div>
-
-            {isLoading ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Loading commands…</p>
-            ) : error !== null ? (
-              <div className="flex items-center justify-between gap-3 rounded-md bg-destructive/10 px-3 py-2">
-                <p role="alert" className="text-xs text-destructive">{error}</p>
-                <Button type="button" variant="outline" size="sm" onClick={() => void refresh()}>
-                  Retry
-                </Button>
-              </div>
-            ) : commands.length === 0 ? (
-              <div className="grid place-items-center gap-2 py-8 text-center">
-                <Command className="size-5 text-muted-foreground" aria-hidden="true" />
-                <p className="text-sm font-medium">No saved commands</p>
-                <p className="max-w-sm text-xs leading-5 text-muted-foreground">
-                  Add the first instruction you want to reuse across agent conversations.
-                </p>
-              </div>
-            ) : visibleCommands.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No commands match “{query.trim()}”.
-              </p>
-            ) : (
-              <div className="max-h-80 overflow-y-auto rounded-md border border-border/60">
-                <table className="w-full table-fixed text-xs" aria-label="Saved commands">
-                  <thead className="sticky top-0 z-10 bg-background text-left text-muted-foreground">
-                    <tr className="border-b border-border/60">
-                      <th scope="col" className="w-40 px-2.5 py-1.5 font-medium">Name</th>
-                      <th scope="col" className="px-2.5 py-1.5 font-medium">Prompt</th>
-                      <th scope="col" className="w-32 px-2.5 py-1.5 text-right font-medium">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleCommands.map((command) => (
-                      <Fragment key={command.id}>
-                        <tr className="group border-b border-border/40 last:border-b-0 hover:bg-muted/50">
-                          <td className="truncate px-2.5 py-1 font-medium" title={command.name}>
-                            {command.name}
-                          </td>
-                          <td className="truncate px-2.5 py-1 text-muted-foreground" title={command.prompt}>
-                            {command.prompt}
-                          </td>
-                          <td className="px-1.5 py-0.5">
-                            <div
-                              className={`flex items-center justify-end gap-0.5 ${
-                                deleteTarget === command.id
-                                  ? ""
-                                  : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
-                              }`}
-                            >
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
-                                aria-label={`Insert ${command.name} into prompt`}
-                                onClick={() => insertCommand(command)}
-                              >
-                                <Icon name="CornerDownLeft" aria-hidden="true" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
-                                aria-label={`Copy ${command.name}`}
-                                onClick={() => void copyCommand(command.prompt)}
-                              >
-                                <Icon name="Copy" aria-hidden="true" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground`}
-                                aria-label={`Edit ${command.name}`}
-                                onClick={() => startEdit(command)}
-                              >
-                                <Icon name="Edit" aria-hidden="true" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} text-muted-foreground hover:text-destructive`}
-                                aria-label={`Delete ${command.name}`}
-                                aria-expanded={deleteTarget === command.id}
-                                onClick={() => setDeleteTarget(command.id)}
-                              >
-                                <Icon name="Trash2" aria-hidden="true" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                        {deleteTarget === command.id ? (
-                          <tr className="border-b border-border/40 bg-destructive/10 last:border-b-0">
-                            <td colSpan={3} className="px-2.5 py-1">
-                              <div
-                                role="group"
-                                aria-label={`Confirm deletion of ${command.name}`}
-                                className="flex items-center justify-between gap-3"
-                              >
-                                <p className="font-medium text-destructive">Delete this command?</p>
-                                <div className="flex items-center gap-2">
-                                  <Button type="button" variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => void deleteCommand(command.id)}
-                                  >
-                                    Delete
-                                  </Button>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : null}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+          ) : visibleCommands.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              No match for “{query.trim()}”.
+            </p>
+          ) : (
+            <ul aria-label="Saved commands">
+              {visibleCommands.map((command) => (
+                <li key={command.id} className="border-b border-border/40 last:border-b-0">
+                  <div className="group flex h-9 items-center gap-3 pl-4 pr-2 hover:bg-muted/50">
+                    <span className="w-36 shrink-0 truncate text-xs font-medium" title={command.name}>
+                      {command.name}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={command.prompt}>
+                      {command.prompt}
+                    </span>
+                    {deleteTarget === command.id ? (
+                      <div
+                        role="group"
+                        aria-label={`Confirm deletion of ${command.name}`}
+                        className="flex shrink-0 items-center gap-1"
+                      >
+                        <span className="mr-1 text-xs text-destructive">Delete?</span>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => setDeleteTarget(null)}>
+                          Cancel
+                        </Button>
+                        <Button type="button" variant="destructive" size="sm" className="h-6 px-2 text-[11px]" onClick={() => void deleteCommand(command.id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} ${iconButton}`}
+                          aria-label={`Insert ${command.name}`}
+                          onClick={() => insertCommand(command)}
+                        >
+                          <Icon name="CornerDownLeft" aria-hidden="true" className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} ${iconButton}`}
+                          aria-label={`Copy ${command.name}`}
+                          onClick={() => void copyCommand(command.prompt)}
+                        >
+                          <Icon name="Copy" aria-hidden="true" className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} ${iconButton}`}
+                          aria-label={`Edit ${command.name}`}
+                          onClick={() => startEdit(command)}
+                        >
+                          <Icon name="Edit" aria-hidden="true" className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={`${COARSE_POINTER_ROW_ACTION_SIZE_CLASS} ${iconButton} hover:text-destructive`}
+                          aria-label={`Delete ${command.name}`}
+                          onClick={() => setDeleteTarget(command.id)}
+                        >
+                          <Icon name="Trash2" aria-hidden="true" className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+        </>
         )}
       </DialogContent>
       )}
@@ -575,11 +526,12 @@ export default definePluginApp((app) => {
     component: CommandManager,
   });
 
-  app.slots.commandPaletteAction({
-    id: "open-commands",
-    title: "Hmm Commands: open command manager",
+  app.commands.register({
+    id: "toggle-commands",
+    title: "Toggle commands",
+    defaultShortcut: { key: "j", mod: true, shift: true },
     run: () => {
-      window.dispatchEvent(new Event(OPEN_COMMAND_MANAGER_EVENT, { cancelable: true }));
+      window.dispatchEvent(new Event(TOGGLE_COMMAND_MANAGER_EVENT, { cancelable: true }));
     },
   });
 });

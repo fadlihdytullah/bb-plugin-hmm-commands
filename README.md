@@ -29,16 +29,17 @@ bb plugin reload hmm-commands
 ## Use
 
 Open a new-thread composer or an existing thread and choose the command icon
-labelled **Open command manager**. You can also press **Cmd+Shift+J** (or
-**Ctrl+Shift+J**), or open the Command Palette with **Cmd+Shift+P** and choose
-**Hmm Commands: open command manager**. Use **New command**
-to reveal the form. The search field is focused when the manager opens; filter
-saved commands by name or prompt, then press **Enter** to insert the first
-match. Or hover a row to reveal the compact **Insert**, **Copy**, **Edit**, or
-**Delete** actions in the scrollable command table. Each insert (button or Enter) increments the
-command's use count; the **Statistics** tab lists the top 5 most and least
-used commands. The dialog stays centered on narrow windows instead of becoming
-a bottom drawer.
+labelled **Open command manager**. **Cmd+Shift+J** (**Ctrl+Shift+J**) toggles it
+open and closed from anywhere, including the composer and thread header; the
+shortcut is also listed beside **Toggle commands** in the Command Palette.
+The search bar sits on one line with **New**, which reveals the form. The search
+field is focused on open; filter saved commands by name or prompt, then press
+**Enter** to insert the first match. Or hover a row to reveal **Insert**,
+**Copy**, **Edit**, or **Delete**. Each insert increments the command's use
+count; the **Stats** tab lists the top 5 most and least used commands. The
+dialog stays centered on narrow windows instead of becoming a bottom drawer.
+
+Requires BB plugin SDK `>=0.5.29`.
 
 ## Verify
 
