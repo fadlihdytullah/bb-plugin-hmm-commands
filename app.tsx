@@ -4,6 +4,7 @@ import { Command } from "lucide-react";
 import {
   definePluginApp,
   useComposer,
+  useSidebarSplitLayout,
 } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
 import { useCommands } from "@/hooks/use-commands";
@@ -97,6 +98,7 @@ async function writeClipboard(text: string): Promise<boolean> {
 
 function CommandManager() {
   const composer = useComposer();
+  const splitLayout = useSidebarSplitLayout();
   const { commands, isLoading, error, refresh, create, update, remove, recordUse } = useCommands();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"commands" | "stats">("commands");
@@ -120,9 +122,13 @@ function CommandManager() {
   const portalScopeProps = usePortalScopeProps();
   const isChatScoped = chatContainer !== null && portalHost !== null;
 
+  const scopeThreadId = composer.scope.kind === "thread" ? composer.scope.threadId : null;
+  const focusedThreadId = splitLayout?.panes.find((pane) => pane.isFocused)?.threadId;
+
   useEffect(() => {
     const toggleManager = (event: Event) => {
       if (event.defaultPrevented) return;
+      if (focusedThreadId !== undefined && focusedThreadId !== scopeThreadId) return;
       event.preventDefault();
       if (closeOpenManager) closeOpenManager();
       else setOpen(true);
@@ -131,7 +137,7 @@ function CommandManager() {
     return () => {
       window.removeEventListener(TOGGLE_COMMAND_MANAGER_EVENT, toggleManager);
     };
-  }, []);
+  }, [focusedThreadId, scopeThreadId]);
 
   useEffect(() => {
     if (!open) return;

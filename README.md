@@ -32,6 +32,8 @@ Open a new-thread composer or an existing thread and choose the command icon
 labelled **Open command manager**. **Cmd+Shift+J** (**Ctrl+Shift+J**) toggles it
 open and closed from anywhere, including the composer and thread header; the
 shortcut is also listed beside **Toggle commands** in the Command Palette.
+With split threads, the shortcut opens the manager in the focused pane, so
+inserts land in that thread's composer.
 The search bar sits on one line with **New**, which reveals the form. The search
 field is focused on open; filter saved commands by name or prompt, then press
 **Enter** to insert the first match. Or hover a row to reveal **Insert**,

@@ -5,7 +5,8 @@ instructions are available before and after a thread starts.
 The manager opens from the Command action or with `Cmd+Shift+J` (`Ctrl+Shift+J`
 on Windows and Linux), which toggles it open and closed from the composer, the
 thread header, or the Command Palette (`Toggle commands`, shortcut shown on the
-right). The header carries the title, command count, List/Stats tabs, and close.
+right). With split threads it targets the focused pane, so inserts land in
+the active thread's composer. The header carries the title, command count, List/Stats tabs, and close.
 Search and a compact `New` button share one row; the new-command form is
 collapsed until requested, and saved commands appear as compact rows. Search is
 focused on open and matches names and prompt text; Enter with a non-empty query
