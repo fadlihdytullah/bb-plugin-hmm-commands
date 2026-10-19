@@ -65,6 +65,44 @@ function UsageList({
   );
 }
 
+function fold(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+function isSubsequence(token: string, text: string): boolean {
+  let from = 0;
+  for (const char of token) {
+    from = text.indexOf(char, from) + 1;
+    if (from === 0) return false;
+  }
+  return true;
+}
+
+function searchCommands(commands: readonly SavedCommand[], query: string): SavedCommand[] {
+  const tokens = fold(query).split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return [...commands];
+  const ranked: { command: SavedCommand; score: number }[] = [];
+  for (const command of commands) {
+    const name = fold(command.name);
+    const prompt = fold(command.prompt);
+    let score = 0;
+    for (const token of tokens) {
+      const at = name.indexOf(token);
+      if (at === 0) score += 0;
+      else if (at > 0 && /[\s\-_/.]/.test(name[at - 1])) score += 1;
+      else if (at > 0) score += 2;
+      else if (prompt.includes(token)) score += 3;
+      else if (token.length > 1 && isSubsequence(token, name)) score += 4;
+      else {
+        score = -1;
+        break;
+      }
+    }
+    if (score >= 0) ranked.push({ command, score });
+  }
+  return ranked.sort((a, b) => a.score - b.score).map((entry) => entry.command);
+}
+
 function appendPrompt(current: string, prompt: string): string {
   const trimmed = current.trimEnd();
   return trimmed.length === 0 ? prompt : `${trimmed}\n\n${prompt}`;
@@ -162,14 +200,7 @@ function CommandManager() {
   }, [open]);
 
   const normalizedQuery = query.trim().toLowerCase();
-  const visibleCommands =
-    normalizedQuery === ""
-      ? commands
-      : commands.filter(
-          (command) =>
-            command.name.toLowerCase().includes(normalizedQuery) ||
-            command.prompt.toLowerCase().includes(normalizedQuery),
-        );
+  const visibleCommands = searchCommands(commands, query);
 
   const mostUsed = commands
     .filter((command) => command.useCount > 0)

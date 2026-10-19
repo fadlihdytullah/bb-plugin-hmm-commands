@@ -35,8 +35,8 @@ shortcut is also listed beside **Toggle commands** in the Command Palette.
 With split threads, the shortcut opens the manager in the focused pane, so
 inserts land in that thread's composer.
 The search bar sits on one line with **New**, which reveals the form. The search
-field is focused on open; filter saved commands by name or prompt, then press
-**Enter** to insert the first match. Or hover a row to reveal **Insert**,
+field is focused on open; filter saved commands by name or prompt (multi-word, accent-insensitive,
+fuzzy on names, best match first), then press **Enter** to insert the first match. Or hover a row to reveal **Insert**,
 **Copy**, **Edit**, or **Delete**. Each insert increments the command's use
 count; the **Stats** tab lists the top 5 most and least used commands. The
 dialog stays centered on narrow windows instead of becoming a bottom drawer.
