@@ -10,7 +10,7 @@ the active thread's composer. The header carries the title, command count, List/
 Search and a compact `New` button share one row; the new-command form is
 collapsed until requested, and saved commands appear as compact rows. Search is
 focused on open and matches names and prompt text: every word must match, accents are ignored, names also match fuzzily, and results are ranked best first; Enter with a non-empty query
-inserts the first match. Each row reveals inline actions on hover or keyboard
+inserts the first match, and ArrowUp/ArrowDown move a wrapping highlight so Enter inserts the highlighted row. Each row reveals inline actions on hover or keyboard
 focus; they stay visible on touch screens. The manager is centered 15% from
 the top of BB’s main chat container.
 

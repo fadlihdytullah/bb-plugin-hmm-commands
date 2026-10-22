@@ -145,6 +145,7 @@ function CommandManager() {
   const [prompt, setPrompt] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [busy, setBusy] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [portalHost, setPortalHost] = useState<HTMLDivElement | null>(null);
@@ -194,6 +195,7 @@ function CommandManager() {
       setPrompt("");
       setEditingId(null);
       setQuery("");
+      setActiveIndex(-1);
       setBusy(false);
       setDeleteTarget(null);
     }
@@ -201,6 +203,7 @@ function CommandManager() {
 
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCommands = searchCommands(commands, query);
+  const activeCommandIndex = activeIndex < visibleCommands.length ? activeIndex : -1;
 
   const mostUsed = commands
     .filter((command) => command.useCount > 0)
@@ -356,12 +359,29 @@ function CommandManager() {
             aria-label="Search commands"
             autoFocus
             className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50 [&::-webkit-search-cancel-button]:hidden"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setActiveIndex(-1);
+            }}
             onKeyDown={(event) => {
-              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+              if (event.nativeEvent.isComposing) return;
+              const count = visibleCommands.length;
+              if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                event.preventDefault();
+                if (count === 0) return;
+                const step = event.key === "ArrowDown" ? 1 : -1;
+                setActiveIndex(
+                  activeCommandIndex === -1
+                    ? step === 1 ? 0 : count - 1
+                    : (activeCommandIndex + step + count) % count,
+                );
+                return;
+              }
+              if (event.key !== "Enter") return;
               event.preventDefault();
-              const first = visibleCommands[0];
-              if (normalizedQuery !== "" && first) insertCommand(first);
+              if (activeCommandIndex === -1 && normalizedQuery === "") return;
+              const target = visibleCommands[Math.max(activeCommandIndex, 0)];
+              if (target) insertCommand(target);
             }}
           />
           {query === "" ? null : (
@@ -454,9 +474,18 @@ function CommandManager() {
             </p>
           ) : (
             <ul aria-label="Saved commands">
-              {visibleCommands.map((command) => (
-                <li key={command.id} className="border-b border-border/40 last:border-b-0">
-                  <div className="group flex h-9 items-center gap-3 pl-4 pr-2 hover:bg-muted/50">
+              {visibleCommands.map((command, index) => (
+                <li
+                  key={command.id}
+                  ref={index === activeCommandIndex ? (node) => node?.scrollIntoView({ block: "nearest" }) : undefined}
+                  aria-current={index === activeCommandIndex}
+                  className="border-b border-border/40 last:border-b-0"
+                >
+                  <div
+                    className={`group flex h-9 items-center gap-3 pl-4 pr-2 hover:bg-muted/50 ${
+                      index === activeCommandIndex ? "bg-muted/50" : ""
+                    }`}
+                  >
                     <span className="w-36 shrink-0 truncate text-xs font-medium" title={command.name}>
                       {command.name}
                     </span>
