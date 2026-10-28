@@ -586,12 +586,6 @@ export default definePluginApp((app) => {
     actions: [{ id: "open-commands", component: CommandManager }],
   });
 
-  app.slots.experimental_threadHeaderAction({
-    id: "commands",
-    title: "Commands",
-    component: CommandManager,
-  });
-
   app.commands.register({
     id: "toggle-commands",
     title: "Toggle commands",

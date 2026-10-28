@@ -1,8 +1,8 @@
 # Hmm Commands
 
 Hmm Commands keeps reusable instructions close to every BB agent conversation.
-The Commands button appears in the agent composer (new and existing threads)
-and in existing thread headers. Open it to save a command, copy its prompt, or insert it into the
+The Commands button appears in the agent composer (new and existing threads).
+Open it to save a command, copy its prompt, or insert it into the
 active composer draft. The manager is centered 15% from the top of BB’s main chat container.
 
 Commands are stored in the plugin's namespaced SQLite database and stay
@@ -30,7 +30,7 @@ bb plugin reload hmm-commands
 
 Open a new-thread composer or an existing thread and choose the command icon
 labelled **Open command manager**. **Cmd+Shift+J** (**Ctrl+Shift+J**) toggles it
-open and closed from anywhere, including the composer and thread header; the
+open and closed from anywhere, including the composer; the
 shortcut is also listed beside **Toggle commands** in the Command Palette.
 With split threads, the shortcut opens the manager in the focused pane, so
 inserts land in that thread's composer.

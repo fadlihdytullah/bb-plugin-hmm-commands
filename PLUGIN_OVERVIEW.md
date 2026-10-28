@@ -1,10 +1,10 @@
 Hmm Commands is a small prompt library for BB agents. It places a Commands
-action in the agent composer and in existing thread headers, so reusable
+action in the agent composer, so reusable
 instructions are available before and after a thread starts.
 
 The manager opens from the Command action or with `Cmd+Shift+J` (`Ctrl+Shift+J`
-on Windows and Linux), which toggles it open and closed from the composer, the
-thread header, or the Command Palette (`Toggle commands`, shortcut shown on the
+on Windows and Linux), which toggles it open and closed from the composer
+or the Command Palette (`Toggle commands`, shortcut shown on the
 right). With split threads it targets the focused pane, so inserts land in
 the active thread's composer. The header carries the title, command count, List/Stats tabs, and close.
 Search and a compact `New` button share one row; the new-command form is
